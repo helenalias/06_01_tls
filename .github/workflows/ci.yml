@@ -2,27 +2,40 @@ name: CI
 
 on:
   push:
-    branches:
-      - master
-      - main
+    branches: [master, main]
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libssl-dev pkg-config build-essential
+
+      - name: Generate self-signed certificate
+        run: |
+          openssl req -nodes -new -x509 \
+            -keyout private.key \
+            -out cert.crt \
+            -subj "/C=RU/ST=Moscow/L=Moscow/O=Codeby/OU=School/CN=codeby.local"
+
       - name: Build Binary
         run: make
-      - name: Simple Test
+
+      - name: Test HTTPS Connection
         run: |
           ./dummy-server.bin &
           sleep 3
-          curl -s -k https://localhost:8443
+          curl -svk https://localhost:8443
           kill $!
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: binary
-          path: ./dummy-server.bin
 
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dummy-server-binary
+          path: ./dummy-server.bin
